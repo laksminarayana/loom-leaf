@@ -98,62 +98,131 @@ function Header({ category, setCategory, search, setSearch, itemCount, openBag, 
   );
 }
 
-function ProductCard({ product, onOpen, onAdd }) {
-  return (
-    <article className="product-card">
-      <button className="product-picture" type="button" onClick={() => onOpen(product)} aria-label={`View ${product.name}`}>
-        <img src={product.image.src} alt={product.image.alt} loading="lazy" />
-        <span className="image-count">{product.images.length} {product.images.length === 1 ? "view" : "views"}</span>
-        <span className="image-zoom">View details <Icon name="arrow" /></span>
-      </button>
-      <div className="product-card-info">
-        <div className="product-card-copy">
-          <span className="product-category">{product.label}</span>
-          <button className="product-title" type="button" onClick={() => onOpen(product)}>{product.name}</button>
-          <p>{product.description}</p>
-        </div>
-        <div className="product-price">
-          <strong>{formatPrice(product.price)}</strong>
-          <span>Sample price</span>
-        </div>
-      </div>
-      <button type="button" className="card-add" onClick={() => onAdd(product)}>Quick add <span>+</span></button>
-    </article>
-  );
-}
+function ImageLightbox({ image, title, onClose }) {
+  useEffect(() => {
+    function handleKeyDown(event) {
+      if (event.key === "Escape") onClose();
+    }
 
-function ProductGrid({ items, onOpen, onAdd, emptyText }) {
-  if (!items.length) return <div className="empty-results"><span>✿</span><h3>No outfits found</h3><p>{emptyText}</p></div>;
+    document.addEventListener("keydown", handleKeyDown);
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = "";
+    };
+  }, [onClose]);
+
   return (
-    <div className="product-grid">
-      {items.map((product) => <ProductCard key={product.key} product={product} onOpen={onOpen} onAdd={onAdd} />)}
+    <div className="image-lightbox" role="dialog" aria-modal="true" aria-label={`${title} full image`} onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+      <button className="image-lightbox-close icon-button" type="button" onClick={onClose} aria-label="Close full image"><Icon name="close" /></button>
+      <img src={image.src} alt={image.alt || title} />
+      <p>{title}</p>
     </div>
   );
 }
 
-function Hero({ product, onShop }) {
+function ProductCard({ product, onOpen, onImageOpen, onAdd }) {
+  const [isFavorite, setIsFavorite] = useState(false);
+
+  return (
+    <article className={`product-card shape-${product.category}`}>
+      <div className="product-picture-wrap">
+        <button className="product-picture" type="button" onClick={() => onImageOpen(product, product.image)} aria-label={`View full image of ${product.name}`}>
+        <img src={product.image.src} alt={product.image.alt} loading="lazy" />
+        <span className="image-zoom">View full image <Icon name="arrow" /></span>
+        </button>
+        <button type="button" className={`card-favorite ${isFavorite ? "is-favorite" : ""}`} aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"} aria-pressed={isFavorite} onClick={() => setIsFavorite(!isFavorite)}>
+          <Icon name="heart" />
+        </button>
+        <span className="product-image-label">{product.label}</span>
+      </div>
+      <div className="product-card-info">
+        <div className="product-card-copy">
+          <button className="product-title" type="button" onClick={() => onOpen(product)}>{product.name}</button>
+        </div>
+        <div className="card-buy">
+          <strong className="product-price">{formatPrice(product.price)}</strong>
+          <button type="button" className="card-add" onClick={() => onAdd(product)}>Options <span>↗</span></button>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function ProductGrid({ items, onOpen, onImageOpen, onAdd, emptyText }) {
+  if (!items.length) return <div className="empty-results"><span>✿</span><h3>No outfits found</h3><p>{emptyText}</p></div>;
+  return (
+    <div className="product-grid">
+      {items.map((product) => <ProductCard key={product.key} product={product} onOpen={onOpen} onImageOpen={onImageOpen} onAdd={onAdd} />)}
+    </div>
+  );
+}
+
+function Hero({ product, sideProduct, onImageOpen, onShop }) {
   return (
     <section className="hero">
-      <div className="hero-copy">
-        <p className="eyebrow"><span /> LITTLE CELEBRATIONS, BIG MEMORIES</p>
-        <h1>Little looks.<br /><em>Big moments.</em></h1>
-        <p>Colorful festive wear for little ones, family photos, and all the happy memories in between.</p>
-        <button className="button button-dark" type="button" onClick={onShop}>Shop kidswear <Icon name="arrow" /></button>
-        <div className="hero-note"><span>✳</span> A little extra magic for their special day</div>
-      </div>
-      <button className="hero-photo" type="button" onClick={() => product && window.dispatchEvent(new CustomEvent("open-product", { detail: product.key }))} aria-label="View featured family outfit">
-        {product && <img src={product.image.src} alt={product.image.alt} fetchPriority="high" />}
-        <span className="hero-badge">THE<br />FESTIVE<br />EDIT</span>
-        <span className="hero-caption">Made for being together <b>↗</b></span>
+      <button className="hero-image hero-image-main" type="button" onClick={() => onImageOpen(product, product.image)} aria-label={`View full image of ${product.name}`}>
+        <img src={product.image.src} alt={product.image.alt} fetchPriority="high" />
+        <span className="hero-image-tag">01 <i> / FAMILY EDIT</i></span>
       </button>
-      <span className="hero-side-note">A LITTLE LOOK FOR A BIG DAY</span>
+      <div className="hero-copy">
+        <span className="hero-sparkle hero-sparkle-top" aria-hidden="true">✳</span>
+        <p className="eyebrow"><span /> THE LITTLE OCCASIONS COLLECTION</p>
+        <h1>Dress them<br />for <em>the feeling.</em></h1>
+        <p>For happy hellos, one-more-twirl moments, and every memory you’ll keep close.</p>
+        <button className="hero-shop-link" type="button" onClick={onShop}>SHOP THE COLLECTION <Icon name="arrow" /></button>
+        <div className="hero-edition"><span>LOOM &amp; LEAF</span><i>Made for little memories</i></div>
+        <span className="hero-sparkle hero-sparkle-bottom" aria-hidden="true">✳</span>
+      </div>
+      <button className="hero-image hero-image-side" type="button" onClick={() => onImageOpen(sideProduct, sideProduct.image)} aria-label={`View full image of ${sideProduct.name}`}>
+        <img src={sideProduct.image.src} alt={sideProduct.image.alt} loading="eager" />
+        <span className="hero-sticker">A LITTLE<br />EXTRA MAGIC</span>
+        <span className="hero-image-tag">02 <i> / PARTY READY</i></span>
+      </button>
     </section>
   );
 }
 
-function Storefront({ visibleProducts, category, setCategory, onOpen, onAdd, search }) {
+function CollectionBanners({ onSelect }) {
+  const banners = [
+    { id: "dresses", title: "Little dresses", note: "For twirls & sunny days" },
+    { id: "lehengas", title: "Festive lehengas", note: "Made for the big moments" },
+    { id: "sets", title: "Two-piece sets", note: "Ready, set, celebrate" },
+    { id: "family", title: "Mom & me", note: "A little match, a lot of love" },
+  ].map((banner) => ({
+    ...banner,
+    product: products.find((product) => product.category === banner.id),
+  }));
+
+  return (
+    <section className="collection-banners section-shell" aria-label="Shop collections">
+      <div className="banner-heading">
+        <div><p className="eyebrow">A LITTLE SOMETHING FOR EVERY OCCASION</p><h2>Find their kind of magic</h2></div>
+        <span>Made for memories ✳</span>
+      </div>
+      <div className="banner-grid">
+        {banners.map((banner, index) => (
+          <button type="button" key={banner.id} data-category={banner.id} className={`collection-banner banner-${index + 1}`} onClick={() => onSelect(banner.id)}>
+            {banner.product && <img src={banner.product.image.src} alt="" loading="lazy" />}
+            <span className="banner-wash" />
+            <span className="banner-copy"><small>{banner.note}</small><strong>{banner.title}</strong><i>Shop collection <b>↗</b></i></span>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function Storefront({ visibleProducts, category, setCategory, onOpen, onImageOpen, onAdd, search }) {
   const [sortBy, setSortBy] = useState("featured");
+  const [showAll, setShowAll] = useState(false);
   const categoryName = catalogCategories.find((item) => item.id === category)?.label ?? "All kidswear";
+  const isBrowsingCollection = Boolean(search) || category !== "all";
+  const featuredProducts = catalogCategories
+    .filter((item) => item.id !== "all")
+    .flatMap((item) => products.filter((product) => product.category === item.id).slice(0, 2));
+  const heroProduct = products.find((product) => product.key.includes("1-50-42-pm-2")) ?? products.find((product) => product.category === "family") ?? products[0];
+  const heroSideProduct = products.find((product) => product.key.includes("1-50-23-pm")) ?? products.find((product) => product.key !== heroProduct.key);
   const sortedProducts = useMemo(() => {
     const sorted = [...visibleProducts];
     if (sortBy === "price-low") sorted.sort((a, b) => a.price - b.price);
@@ -161,40 +230,53 @@ function Storefront({ visibleProducts, category, setCategory, onOpen, onAdd, sea
     if (sortBy === "name") sorted.sort((a, b) => a.name.localeCompare(b.name));
     return sorted;
   }, [visibleProducts, sortBy]);
+  const productsToShow = isBrowsingCollection || showAll
+    ? sortedProducts
+    : featuredProducts.filter((product) => visibleProducts.some((visible) => visible.key === product.key));
 
   return (
     <>
-      <Hero product={products.find((item) => item.category === "family") ?? products[0]} onShop={() => document.querySelector("#collection")?.scrollIntoView({ behavior: "smooth" })} />
+      <Hero
+        product={heroProduct}
+        sideProduct={heroSideProduct}
+        onImageOpen={onImageOpen}
+        onShop={() => {
+          setCategory("family");
+          document.querySelector("#collection")?.scrollIntoView({ behavior: "smooth" });
+        }}
+      />
       <div className="trust-strip">
         <span><i>✿</i> Made for little celebrations</span>
         <span><i>✿</i> Colorful, joyful details</span>
         <span><i>✿</i> Thoughtful family moments</span>
         <span><i>✿</i> Sizes from 1 to 8 years</span>
       </div>
+      {!isBrowsingCollection && <CollectionBanners onSelect={setCategory} />}
       <main className="collection section-shell" id="collection">
         <div className="collection-heading">
           <div>
             <p className="eyebrow">DRESS-UP DAYS, AND EVERY DAY AFTER</p>
-            <h2>{search ? "Search results" : categoryName}</h2>
-            <p className="collection-subtitle">{visibleProducts.length} little looks to love</p>
+            <h2>{search ? "Search results" : !isBrowsingCollection ? "A few little favorites" : categoryName}</h2>
+            <p className="collection-subtitle">{!isBrowsingCollection && !showAll ? `A handpicked edit from ${visibleProducts.length} little looks` : `${visibleProducts.length} little looks to love`}</p>
           </div>
-          <label className="sort-field">Sort by
+          {(isBrowsingCollection || showAll) && <label className="sort-field">Sort by
             <select value={sortBy} onChange={(event) => setSortBy(event.target.value)} aria-label="Sort products">
               <option value="featured">Featured</option>
               <option value="price-low">Price: low to high</option>
               <option value="price-high">Price: high to low</option>
               <option value="name">Name</option>
             </select>
-          </label>
+          </label>}
         </div>
-        <div className="department-tabs" aria-label="Filter by collection">
+        {(isBrowsingCollection || showAll) && <div className="department-tabs" aria-label="Filter by collection">
           {catalogCategories.map((item) => (
             <button type="button" key={item.id} data-category={item.id} className={category === item.id ? "department-tab active" : "department-tab"} onClick={() => setCategory(item.id)}>
               {item.label}
             </button>
           ))}
-        </div>
-        <ProductGrid items={sortedProducts} onOpen={onOpen} onAdd={onAdd} emptyText="Try another search or choose a different kidswear collection." />
+        </div>}
+        <ProductGrid items={productsToShow} onOpen={onOpen} onImageOpen={onImageOpen} onAdd={onAdd} emptyText="Try another search or choose a different kidswear collection." />
+        {!isBrowsingCollection && !showAll && <button className="view-all-button" type="button" onClick={() => setShowAll(true)}>Browse all {visibleProducts.length} styles <Icon name="arrow" /></button>}
       </main>
       <section className="story" id="our-story">
         <div className="story-mark">L<span>+</span></div>
@@ -205,7 +287,7 @@ function Storefront({ visibleProducts, category, setCategory, onOpen, onAdd, sea
   );
 }
 
-function ProductDetail({ product, onBack, onOpen, onAdd }) {
+function ProductDetail({ product, onBack, onOpen, onImageOpen, onAdd }) {
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedSize, setSelectedSize] = useState("");
   const [quantity, setQuantity] = useState(1);
@@ -239,10 +321,10 @@ function ProductDetail({ product, onBack, onOpen, onAdd }) {
               </button>
             ))}
           </div>}
-          <div className="gallery-main">
+          <button className="gallery-main" type="button" onClick={() => onImageOpen(product, product.images[selectedImage] ?? product.image)} aria-label={`View full image of ${product.name}`}>
             <img src={product.images[selectedImage]?.src ?? product.image.src} alt={`${product.name}, view ${selectedImage + 1}`} />
             <span className="gallery-count">{selectedImage + 1} / {product.images.length}</span>
-          </div>
+          </button>
         </div>
         <section className="product-buy">
           <button className="back-link" type="button" onClick={onBack}>← Back to kidswear</button>
@@ -273,7 +355,7 @@ function ProductDetail({ product, onBack, onOpen, onAdd }) {
           <details className="detail-disclosure"><summary>Size &amp; fit</summary><p>Choose an age range that matches your child. If between sizes, consider sizing up.</p></details>
         </section>
       </div>
-      {related.length > 0 && <section className="related-products"><div className="related-title"><div><p className="eyebrow">MORE LITTLE LOOKS</p><h2>You may also love</h2></div><button type="button" className="text-button" onClick={onBack}>View the collection <Icon name="arrow" /></button></div><ProductGrid items={related} onOpen={onOpen} onAdd={onAdd} emptyText="" /></section>}
+      {related.length > 0 && <section className="related-products"><div className="related-title"><div><p className="eyebrow">MORE LITTLE LOOKS</p><h2>You may also love</h2></div><button type="button" className="text-button" onClick={onBack}>View the collection <Icon name="arrow" /></button></div><ProductGrid items={related} onOpen={onOpen} onImageOpen={onImageOpen} onAdd={onAdd} emptyText="" /></section>}
     </main>
   );
 }
@@ -346,6 +428,7 @@ export default function App() {
   const [cart, setCart] = useState(readCart);
   const [cartOpen, setCartOpen] = useState(false);
   const [quickAddProduct, setQuickAddProduct] = useState(null);
+  const [imageViewer, setImageViewer] = useState(null);
 
   useEffect(() => {
     try {
@@ -390,6 +473,10 @@ export default function App() {
     url.searchParams.set("product", product.key);
     window.history.pushState({ product: product.key }, "", url);
     window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function openProductImage(product, image) {
+    setImageViewer({ image, title: product.name });
   }
 
   function showCatalog() {
@@ -460,10 +547,11 @@ export default function App() {
     <>
       <Header category={category} setCategory={setCategory} search={search} setSearch={updateSearch} itemCount={itemCount} openBag={() => setCartOpen(true)} showCatalog={showCatalog} />
       {selectedProduct
-        ? <ProductDetail key={selectedProduct.key} product={selectedProduct} onBack={showCatalog} onOpen={openProduct} onAdd={addToCart} />
-        : <Storefront visibleProducts={visibleProducts} category={category} setCategory={setCategory} onOpen={openProduct} onAdd={handleQuickAdd} search={search} />}
+        ? <ProductDetail key={selectedProduct.key} product={selectedProduct} onBack={showCatalog} onOpen={openProduct} onImageOpen={openProductImage} onAdd={addToCart} />
+        : <Storefront visibleProducts={visibleProducts} category={category} setCategory={setCategory} onOpen={openProduct} onImageOpen={openProductImage} onAdd={handleQuickAdd} search={search} />}
       <Footer onNavigateCategory={navigateToCategory} onNavigateStory={navigateToStory} />
       {quickAddDialog}
+      {imageViewer && <ImageLightbox image={imageViewer.image} title={imageViewer.title} onClose={() => setImageViewer(null)} />}
       <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} cart={cart} onQuantity={updateQuantity} onRemove={removeFromCart} />
     </>
   );
